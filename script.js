@@ -46,7 +46,7 @@ function detectSmile(mouth) {
   const smileRatio = mouthWidth / mouthHeight;
   
   // A higher ratio typically indicates a smile
-  return smileRatio > 2.0;
+  return smileRatio > 3.0;
 }
 
 function distance(point1, point2) {
