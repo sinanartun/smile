@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main  # Adjust this to your target branch
+      - tensor
 
 jobs:
   deploy:
