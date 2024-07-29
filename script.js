@@ -4,10 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const context = canvas.getContext('2d');
   const status = document.getElementById('status');
 
-  // Load face-api models
-  await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-  await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-  await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+  // Load face-landmarks-detection model
+  const model = await faceLandmarksDetection.load(faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
 
   // Start video stream
   navigator.mediaDevices.getUserMedia({ video: {} })
@@ -18,21 +16,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   video.addEventListener('play', () => {
     const displaySize = { width: video.width, height: video.height };
-    faceapi.matchDimensions(canvas, displaySize);
+    canvas.width = displaySize.width;
+    canvas.height = displaySize.height;
 
     setInterval(async () => {
-      const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
+      const predictions = await model.estimateFaces({
+        input: video,
+        returnTensors: false,
+        flipHorizontal: false
+      });
+
       context.clearRect(0, 0, canvas.width, canvas.height);
-      faceapi.draw.drawDetections(canvas, resizedDetections);
-      faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-      if (resizedDetections.length > 0) {
-        const landmarks = resizedDetections[0].landmarks;
-        const mouth = landmarks.getMouth();
+      if (predictions.length > 0) {
+        const keypoints = predictions[0].scaledMesh;
+        drawKeypoints(context, keypoints);
 
-        const isSmiling = detectSmile(mouth);
-        status.textContent = isSmiling ? 'Smiling' : 'Not Smiling';
+        const mouth = getMouthPoints(keypoints);
+        const smileStatus = detectSmile(mouth);
+        status.textContent = smileStatus;
       } else {
         status.textContent = 'Detecting...';
       }
@@ -40,15 +42,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+function getMouthPoints(keypoints) {
+  return keypoints.slice(61, 81); // Extract mouth keypoints
+}
+
 function detectSmile(mouth) {
-  const mouthWidth = distance(mouth[0], mouth[6]);
-  const mouthHeight = distance(mouth[3], mouth[9]);
+  const mouthWidth = distance(mouth[0], mouth[10]);
+  const mouthHeight = distance(mouth[3], mouth[13]);
   const smileRatio = mouthWidth / mouthHeight;
   
-  // A higher ratio typically indicates a smile
-  return smileRatio > 3.0;
+  if (smileRatio > 1.8) {
+    return 'Smiling';
+  } else if (smileRatio > 1.2) {
+    return 'Normal';
+  } else {
+    return 'Not Smiling';
+  }
 }
 
 function distance(point1, point2) {
-  return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
+  return Math.sqrt(Math.pow(point1[0] - point2[0], 2) + Math.pow(point1[1] - point2[1], 2));
+}
+
+function drawKeypoints(context, keypoints) {
+  context.strokeStyle = 'red';
+  for (let i = 0; i < keypoints.length; i++) {
+    const [x, y] = keypoints[i];
+    context.beginPath();
+    context.arc(x, y, 1, 0, 2 * Math.PI);
+    context.stroke();
+  }
 }
