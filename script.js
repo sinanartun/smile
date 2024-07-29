@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const video = document.getElementById('video');
   const canvas = document.getElementById('overlay');
   const context = canvas.getContext('2d');
+  const status = document.getElementById('status');
 
   // Load face-api models
   await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
@@ -25,6 +26,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       context.clearRect(0, 0, canvas.width, canvas.height);
       faceapi.draw.drawDetections(canvas, resizedDetections);
       faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+      if (resizedDetections.length > 0) {
+        const landmarks = resizedDetections[0].landmarks;
+        const mouth = landmarks.getMouth();
+
+        const isSmiling = detectSmile(mouth);
+        status.textContent = isSmiling ? 'Smiling' : 'Not Smiling';
+      } else {
+        status.textContent = 'Detecting...';
+      }
     }, 100);
   });
 });
+
+function detectSmile(mouth) {
+  const mouthWidth = distance(mouth[0], mouth[6]);
+  const mouthHeight = distance(mouth[3], mouth[9]);
+  const smileRatio = mouthWidth / mouthHeight;
+  
+  // A higher ratio typically indicates a smile
+  return smileRatio > 2.0;
+}
+
+function distance(point1, point2) {
+  return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
+}
