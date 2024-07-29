@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const status = document.getElementById('status');
 
   // Load face-landmarks-detection model
-  const model = await faceLandmarksDetection.load(faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
+  const model = await faceLandmarksDetection.load(faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh);
 
   // Start video stream
   navigator.mediaDevices.getUserMedia({ video: {} })
